@@ -1,6 +1,7 @@
 package com.example.image_viewer;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 
 import android.app.Dialog;
 import android.content.Intent;
@@ -123,31 +124,30 @@ public class MainActivity extends AppCompatActivity {
         // Attach the image (make sure to pass the image URI)
         emailIntent.putExtra(Intent.EXTRA_STREAM, imageUri);
         emailIntent.setPackage("com.google.android.gm"); // Specify GMAIL package name
-        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-        StrictMode.setThreadPolicy(policy);
         startActivity(emailIntent);
-        if (emailIntent.resolveActivity(getPackageManager()) != null) {
-
-            Toast.makeText(MainActivity.this, "Check your email", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(MainActivity.this, "Unable to send, please install GMAIL", Toast.LENGTH_SHORT).show();
-        }
+        Toast.makeText(MainActivity.this, "Check your email", Toast.LENGTH_SHORT).show();
     }
     private boolean isValidEmail(String email) {
         return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches();
     }
-    private Uri saveByteArrayToTempFile(byte[] byteArray) {
+    private Uri copyImageToCache(byte[] imageBytes) {
         try {
-            File tempFile = File.createTempFile("image", ".png", getCacheDir());
-            FileOutputStream fos = new FileOutputStream(tempFile);
-            fos.write(byteArray);
+            File cacheDir = getCacheDir();
+            File imageFile = new File(cacheDir, "temp_image.png");
+
+            // Write the imageBytes to the temporary file
+            FileOutputStream fos = new FileOutputStream(imageFile);
+            fos.write(imageBytes);
             fos.close();
-            return Uri.fromFile(tempFile);
+
+            // Get a content:// URI for the temporary file using FileProvider
+            return FileProvider.getUriForFile(this, "com.example.image_viewer.fileprovider", imageFile);
         } catch (IOException e) {
             e.printStackTrace();
             return null;
         }
     }
+
     private void showBottomDialog() {
 
         final Dialog dialog = new Dialog(this);
@@ -181,8 +181,12 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, "Message cannot be empty", Toast.LENGTH_SHORT).show();
                     return;
                 }
+                if (ImageByteArrayList.size()==0){
+                    Toast.makeText(MainActivity.this,"You haven't upload any image",Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 byte[] imageBytes = ImageByteArrayList.get(ListOrder);
-                Uri imageUri = saveByteArrayToTempFile(imageBytes);
+                Uri imageUri = copyImageToCache(imageBytes);
                 sendEmailWithImage(emailAddress,subject,message,imageUri);
                 dialog.dismiss();
             }
